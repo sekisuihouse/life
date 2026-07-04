@@ -202,6 +202,31 @@ h2 {
   background: #ffe100;
 }
 
+.action-panel {
+  display: grid;
+  gap: var(--km-space-5);
+  margin: var(--km-space-8) 0;
+}
+
+.status-label {
+  display: inline-flex;
+  width: fit-content;
+  min-width: 132px;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--km-space-5);
+  border: 4px solid var(--km-color-black);
+  font-size: 24px;
+  font-weight: var(--km-font-weight-bold);
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--km-space-4);
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

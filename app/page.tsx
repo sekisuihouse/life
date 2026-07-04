@@ -1,20 +1,18 @@
+import { borrowAction, returnAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth/guards";
 import { buildSafetySnapshot } from "@/lib/safety/snapshot";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const BORROW_FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSfjFMYhbDtq6u87dQI1pW8uB4JxvFP0-Tk_qbKsFGPW9d5fDg/viewform?embedded=true";
-const RETURN_FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSdd_g2F6DuK9GBptzLY7tI3f7spTkGZ8ya3XckkeLOXJ9Gwrw/viewform?usp=dialog";
-
 export default async function HomePage() {
   const user = await requireUser();
   if (user.isAdmin) return <TeacherDashboard />;
 
-  const snapshot = await buildSafetySnapshot();
-  const canBorrow = snapshot.status === "OK";
+  const [snapshot, activeRental] = await Promise.all([buildSafetySnapshot(), getActiveRental(user.id)]);
+  const statusLabel = activeRental ? "貸出中" : "返却済み";
+  const canBorrow = snapshot.status === "OK" && !activeRental;
+  const canReturn = Boolean(activeRental);
 
   return (
     <main className="page">
@@ -34,6 +32,29 @@ export default async function HomePage() {
         </ul>
       </section>
 
+      <section className="panel action-panel" aria-label="自分のステータス">
+        <h2>自分のステータス</h2>
+        <div className="status-label">{statusLabel}</div>
+        {activeRental && (
+          <p>
+            貸出開始: {new Date(activeRental.borrowed_at).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" })}
+          </p>
+        )}
+        <div className="button-row">
+          <form action={borrowAction}>
+            <button className="km-button" disabled={!canBorrow}>
+              貸し出し申請フォームを開く
+            </button>
+          </form>
+          <form action={returnAction}>
+            {activeRental && <input type="hidden" name="rental_id" value={activeRental.id} />}
+            <button className="km-button" disabled={!canReturn}>
+              返却申請フォームを開く
+            </button>
+          </form>
+        </div>
+      </section>
+
       <div className="grid">
         <section className="panel" aria-label="観測値">
           <h2>観測値</h2>
@@ -49,19 +70,13 @@ export default async function HomePage() {
 
         <section className="panel" aria-label="返却申請フォーム">
           <h2>返却申請フォーム</h2>
-          <a className="km-button" href={RETURN_FORM_URL} target="_blank" rel="noreferrer">
-            返却申請フォームを開く
-          </a>
+          <p>貸出中の時だけ返却申請フォームを開けます。</p>
         </section>
       </div>
 
       <section className="panel form-panel" aria-label="貸し出し申請フォーム">
         <h2>貸し出し申請フォーム</h2>
-        {canBorrow ? (
-          <GoogleForm title="貸し出し申請フォーム" src={BORROW_FORM_URL} height={732} />
-        ) : (
-          <p className="notice danger">現在の判定がOKではないため、貸し出し申請フォームは表示しません。</p>
-        )}
+        <p>返却済み、かつ今日の判定がOKの時だけ貸し出し申請フォームを開けます。</p>
       </section>
     </main>
   );
@@ -94,6 +109,17 @@ async function TeacherDashboard() {
   );
 }
 
+async function getActiveRental(userId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data } = await supabase
+    .from("rentals")
+    .select("id, borrowed_at")
+    .eq("user_id", userId)
+    .is("returned_at", null)
+    .maybeSingle();
+  return data;
+}
+
 function RentalList({ rentals, showPhoto = false }: { rentals: any[]; showPhoto?: boolean }) {
   if (rentals.length === 0) return <p className="panel">該当する記録はありません。</p>;
   return (
@@ -109,23 +135,6 @@ function RentalList({ rentals, showPhoto = false }: { rentals: any[]; showPhoto?
         </article>
       ))}
     </div>
-  );
-}
-
-function GoogleForm({ title, src, height }: { title: string; src: string; height: number }) {
-  return (
-    <iframe
-      className="google-form"
-      src={src}
-      title={title}
-      width="640"
-      height={height}
-      frameBorder="0"
-      marginHeight={0}
-      marginWidth={0}
-    >
-      読み込んでいます…
-    </iframe>
   );
 }
 

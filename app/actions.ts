@@ -6,6 +6,11 @@ import { buildSafetySnapshot } from "@/lib/safety/snapshot";
 import { requireAdmin, requireUser } from "@/lib/auth/guards";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
+const BORROW_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSfjFMYhbDtq6u87dQI1pW8uB4JxvFP0-Tk_qbKsFGPW9d5fDg/viewform?usp=dialog";
+const RETURN_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSdd_g2F6DuK9GBptzLY7tI3f7spTkGZ8ya3XckkeLOXJ9Gwrw/viewform?usp=dialog";
+
 export async function borrowAction(formData: FormData) {
   const user = await requireUser();
   const snapshot = await buildSafetySnapshot();
@@ -30,14 +35,12 @@ export async function borrowAction(formData: FormData) {
   });
 
   revalidatePath("/");
-  redirect("/?borrowed=1");
+  redirect(BORROW_FORM_URL);
 }
 
 export async function returnAction(formData: FormData) {
   const user = await requireUser();
   const rentalId = String(formData.get("rental_id") || "");
-  const file = formData.get("photo");
-  if (!(file instanceof File) || file.size === 0) redirect("/?error=photo");
 
   const supabase = createSupabaseAdminClient();
   const { data: rental } = await supabase
@@ -49,28 +52,17 @@ export async function returnAction(formData: FormData) {
     .maybeSingle();
   if (!rental) redirect("/");
 
-  const extension = file.name.split(".").pop() || "jpg";
-  const path = `${user.id}/${rentalId}-${Date.now()}.${extension}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const { error: uploadError } = await supabase.storage.from("return-photos").upload(path, bytes, {
-    contentType: file.type || "image/jpeg",
-    upsert: false
-  });
-  if (uploadError) redirect("/?error=upload");
-
-  const { data } = supabase.storage.from("return-photos").getPublicUrl(path);
   await supabase
     .from("rentals")
     .update({
       returned_at: new Date().toISOString(),
-      return_photo_url: data.publicUrl,
       return_comment: ""
     })
     .eq("id", rentalId);
 
   revalidatePath("/admin");
   revalidatePath("/");
-  redirect("/?returned=1");
+  redirect(RETURN_FORM_URL);
 }
 
 export async function adminOverrideAction(formData: FormData) {
