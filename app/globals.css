@@ -71,10 +71,9 @@ textarea {
   background: rgba(255, 255, 255, .96);
 }
 
-.brand img {
-  display: block;
-  width: 210px;
-  height: auto;
+.brand-text {
+  font-size: 20px;
+  font-weight: var(--km-font-weight-bold);
 }
 
 .nav {
@@ -309,10 +308,6 @@ h2 {
     align-items: flex-start;
     flex-direction: column;
     padding: var(--km-space-4);
-  }
-
-  .brand img {
-    width: 180px;
   }
 
   .nav {

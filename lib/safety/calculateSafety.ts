@@ -74,7 +74,7 @@ export function calculateSafety(input: SafetyInput): SafetyResponse {
   return {
     status,
     updatedAt: input.now.toISOString(),
-    reasons: status === "OK" ? ["条件上は利用可です。ただし安全を保証するものではありません。"] : [...reasons, ...unknown],
+    reasons: status === "OK" ? ["条件上は利用可です。"] : [...reasons, ...unknown],
     metrics,
     sourceHealth: input.sourceHealth
   };

@@ -6,7 +6,7 @@ export type JmaWarnings = {
 };
 
 export async function fetchJmaWarnings(): Promise<JmaWarnings> {
-  if (process.env.JMA_PROVIDER_ENABLED !== "true") {
+  if (process.env.JMA_PROVIDER_ENABLED === "disabled") {
     return { thunderWarning: null, heavyRainWarning: null, floodWarning: null, ok: false };
   }
 

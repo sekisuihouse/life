@@ -1,4 +1,5 @@
 import type { NormalizedObservation } from "@/lib/safety/types";
+import { fetchKasenHironoObservations } from "./kasenTokushima";
 
 type GeoJsonFeature = {
   properties?: Record<string, unknown>;
@@ -21,6 +22,9 @@ export async function fetchTokushimaObservations() {
   const observations = [rain, water, weather].flatMap((result) =>
     result.status === "fulfilled" ? result.value : []
   );
+  if (rain.status !== "fulfilled" || water.status !== "fulfilled" || observations.length === 0) {
+    return fetchKasenHironoObservations();
+  }
   return {
     observations,
     ok: rain.status === "fulfilled" && water.status === "fulfilled"
@@ -65,7 +69,9 @@ export function selectHirono(observations: NormalizedObservation[]) {
 }
 
 function scoreObservation(a: NormalizedObservation, b: NormalizedObservation) {
-  return score(b) - score(a);
+  const scoreDiff = score(b) - score(a);
+  if (scoreDiff !== 0) return scoreDiff;
+  return new Date(b.observedAt).getTime() - new Date(a.observedAt).getTime();
 }
 
 function score(observation: NormalizedObservation) {

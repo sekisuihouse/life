@@ -9,7 +9,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 export async function borrowAction(formData: FormData) {
   const user = await requireUser();
   const snapshot = await buildSafetySnapshot();
-  if (snapshot.status !== "OK") redirect("/borrow?error=safety");
+  if (snapshot.status !== "OK") redirect("/?error=safety");
 
   const supabase = createSupabaseAdminClient();
   const { data: existing } = await supabase
@@ -18,32 +18,26 @@ export async function borrowAction(formData: FormData) {
     .eq("user_id", user.id)
     .is("returned_at", null)
     .maybeSingle();
-  if (existing) redirect("/borrow?error=active");
-
-  const itemCount = Number(formData.get("item_count"));
-  const size = String(formData.get("size") || "");
-  const borrowerName = String(formData.get("borrower_name") || user.name);
-  const memo = String(formData.get("memo") || "");
+  if (existing) redirect("/");
 
   await supabase.from("rentals").insert({
     user_id: user.id,
     email: user.email,
-    borrower_name: borrowerName,
-    item_count: Number.isFinite(itemCount) ? itemCount : 1,
-    size,
-    memo
+    borrower_name: user.name,
+    item_count: 1,
+    size: "free",
+    memo: ""
   });
 
   revalidatePath("/");
-  redirect("/return?created=1");
+  redirect("/?borrowed=1");
 }
 
 export async function returnAction(formData: FormData) {
   const user = await requireUser();
   const rentalId = String(formData.get("rental_id") || "");
   const file = formData.get("photo");
-  const comment = String(formData.get("return_comment") || "");
-  if (!(file instanceof File) || file.size === 0) redirect("/return?error=photo");
+  if (!(file instanceof File) || file.size === 0) redirect("/?error=photo");
 
   const supabase = createSupabaseAdminClient();
   const { data: rental } = await supabase
@@ -53,7 +47,7 @@ export async function returnAction(formData: FormData) {
     .eq("user_id", user.id)
     .is("returned_at", null)
     .maybeSingle();
-  if (!rental) redirect("/return?error=not_found");
+  if (!rental) redirect("/");
 
   const extension = file.name.split(".").pop() || "jpg";
   const path = `${user.id}/${rentalId}-${Date.now()}.${extension}`;
@@ -62,7 +56,7 @@ export async function returnAction(formData: FormData) {
     contentType: file.type || "image/jpeg",
     upsert: false
   });
-  if (uploadError) redirect("/return?error=upload");
+  if (uploadError) redirect("/?error=upload");
 
   const { data } = supabase.storage.from("return-photos").getPublicUrl(path);
   await supabase
@@ -70,12 +64,13 @@ export async function returnAction(formData: FormData) {
     .update({
       returned_at: new Date().toISOString(),
       return_photo_url: data.publicUrl,
-      return_comment: comment
+      return_comment: ""
     })
     .eq("id", rentalId);
 
   revalidatePath("/admin");
-  redirect("/return?returned=1");
+  revalidatePath("/");
+  redirect("/?returned=1");
 }
 
 export async function adminOverrideAction(formData: FormData) {

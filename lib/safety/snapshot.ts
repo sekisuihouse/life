@@ -17,7 +17,7 @@ export async function buildSafetySnapshot(): Promise<SafetyResponse> {
     waterLevelM: selected.waterLevel?.value ?? null,
     waterLevelStation: selected.waterLevel ? `${selected.waterLevel.riverName || ""} ${selected.waterLevel.stationName}`.trim() : null,
     rainfall10mMm: selected.rain?.value ?? null,
-    rainfall1hMm: selected.rain?.value ?? null,
+    rainfall1hMm: db.rainfall1hMm ?? selected.rain?.value ?? null,
     rainfall3hMm: db.rainfall3hMm,
     rainfall24hMm: db.rainfall24hMm,
     rainfall48hMm: db.rainfall48hMm,
@@ -32,7 +32,7 @@ export async function buildSafetySnapshot(): Promise<SafetyResponse> {
 
   const sourceHealth: SourceHealth = {
     tokushimaGeojson: tokushima.ok ? (dataAgeMinutes !== null && dataAgeMinutes <= 20 ? "ok" : "stale") : "error",
-    jma: process.env.JMA_PROVIDER_ENABLED === "true" ? (jma.ok ? "ok" : "error") : "disabled",
+    jma: process.env.JMA_PROVIDER_ENABLED === "disabled" ? "disabled" : jma.ok ? "ok" : "error",
     databaseHistory: db.historyOk ? "ok" : "insufficient"
   };
 
@@ -57,6 +57,14 @@ async function safeTokushima() {
 }
 
 async function persistAndReadHistory(observations: NormalizedObservation[]) {
+  const liveRows = observations.map((observation) => ({
+    station_name: observation.stationName,
+    station_type: observation.stationType,
+    river_name: observation.riverName,
+    observed_at: observation.observedAt,
+    value: observation.value
+  }));
+
   try {
     const supabase = createSupabaseAdminClient();
     if (observations.length > 0) {
@@ -81,30 +89,26 @@ async function persistAndReadHistory(observations: NormalizedObservation[]) {
       .gte("observed_at", since48h)
       .order("observed_at", { ascending: true });
 
-    const rows = data || [];
-    const rainRows = rows.filter((row) => row.station_type === "rain" && typeof row.value === "number");
-    const waterRows = rows.filter((row) => row.station_type === "water_level" && typeof row.value === "number");
-
-    return {
-      rainfall3hMm: sumRain(rainRows, 3),
-      rainfall24hMm: sumRain(rainRows, 24),
-      rainfall48hMm: sumRain(rainRows, 48),
-      upstreamRainfall24hMm: sumRain(rainRows, 24),
-      upstreamRainfall48hMm: sumRain(rainRows, 48),
-      waterLevelRisingFast: detectRisingFast(waterRows),
-      historyOk: rainRows.length >= 2 && waterRows.length >= 2
-    };
+    return computeHistory([...(data || []), ...liveRows]);
   } catch {
-    return {
-      rainfall3hMm: null,
-      rainfall24hMm: null,
-      rainfall48hMm: null,
-      upstreamRainfall24hMm: null,
-      upstreamRainfall48hMm: null,
-      waterLevelRisingFast: null,
-      historyOk: false
-    };
+    return computeHistory(liveRows);
   }
+}
+
+function computeHistory(rows: Array<{ station_type: string; observed_at: string; value: number | null }>) {
+  const rainRows = rows.filter((row) => row.station_type === "rain" && typeof row.value === "number");
+  const waterRows = rows.filter((row) => row.station_type === "water_level" && typeof row.value === "number");
+
+  return {
+    rainfall1hMm: sumRain(rainRows, 1),
+    rainfall3hMm: sumRain(rainRows, 3),
+    rainfall24hMm: sumRain(rainRows, 24),
+    rainfall48hMm: sumRain(rainRows, 48),
+    upstreamRainfall24hMm: sumRain(rainRows, 24),
+    upstreamRainfall48hMm: sumRain(rainRows, 48),
+    waterLevelRisingFast: detectRisingFast(waterRows),
+    historyOk: rainRows.length >= 6 && waterRows.length >= 2
+  };
 }
 
 function sumRain(rows: Array<{ observed_at: string; value: number | null }>, hours: number) {
