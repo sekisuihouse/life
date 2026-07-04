@@ -31,17 +31,18 @@ export function validateUser(user: User): AppUser | null {
   const name = String(user.user_metadata?.full_name || user.user_metadata?.name || email.split("@")[0] || "利用者");
   const hd = readHostedDomain(user);
   const allowedHd = process.env.ALLOWED_GOOGLE_HD || "kamiyama.ac.jp";
-  const userRegex = new RegExp(process.env.ALLOWED_EMAIL_REGEX || "^kmc[0-9]+@kamiyama\\.ac\\.jp$");
+  const userRegex = new RegExp(process.env.ALLOWED_EMAIL_REGEX || "^[a-zA-Z0-9._%+-]+@kamiyama\\.ac\\.jp$");
   const adminRegex = new RegExp(process.env.ADMIN_EMAIL_REGEX || "^[a-zA-Z0-9._%+-]+@kamiyama-marugoto\\.com$");
   const adminEmails = (process.env.ADMIN_EMAILS || "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter(Boolean);
   const isAdmin = adminRegex.test(email) || adminEmails.includes(email.toLowerCase());
-  const isAllowedUser = userRegex.test(email);
+  const isAllowedUser = userRegex.test(email) || email.endsWith("@kamiyama.ac.jp");
+  const hasAllowedHostedDomain = hd === allowedHd || email.endsWith(`@${allowedHd}`);
 
   if (!isAdmin && !isAllowedUser) return null;
-  if (!isAdmin && hd !== allowedHd) return null;
+  if (!isAdmin && !hasAllowedHostedDomain) return null;
 
   return { id: user.id, email, name, isAdmin };
 }
