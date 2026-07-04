@@ -9,8 +9,7 @@ const LIMITS = {
   rainfall24hMm: 30,
   rainfall48hMm: 50,
   upstream24hMm: 30,
-  upstream48hMm: 50,
-  rainChancePercent: 50
+  upstream48hMm: 50
 };
 
 export function calculateSafety(input: SafetyInput): SafetyResponse {
@@ -62,12 +61,6 @@ export function calculateSafety(input: SafetyInput): SafetyResponse {
   addRainReason(reasons, unknown, metrics.rainfall48hMm, LIMITS.rainfall48hMm, "直近48時間雨量");
   addRainReason(reasons, unknown, metrics.upstreamRainfall24hMm, LIMITS.upstream24hMm, "上流・近隣24時間雨量");
   addRainReason(reasons, unknown, metrics.upstreamRainfall48hMm, LIMITS.upstream48hMm, "上流・近隣48時間雨量");
-
-  if (metrics.todayRainChancePercent === null) {
-    unknown.push("今日中に雨が降る確率を確認できません。");
-  } else if (metrics.todayRainChancePercent >= LIMITS.rainChancePercent) {
-    reasons.push(`今日中に雨が降る確率が ${LIMITS.rainChancePercent}% 以上です。`);
-  }
 
   if (metrics.heavyRainWarning === true) reasons.push("大雨警報・注意報が出ています。");
   if (metrics.floodWarning === true) reasons.push("洪水警報・注意報が出ています。");

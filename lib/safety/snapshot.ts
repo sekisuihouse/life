@@ -2,12 +2,11 @@ import { calculateSafety } from "./calculateSafety";
 import type { NormalizedObservation, SafetyMetrics, SafetyResponse, SourceHealth } from "./types";
 import { fetchJmaWarnings } from "@/lib/providers/jma";
 import { fetchTokushimaObservations, selectHirono } from "@/lib/providers/tokushima";
-import { fetchTodayRainChance } from "@/lib/providers/tsukumijimaWeather";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export async function buildSafetySnapshot(): Promise<SafetyResponse> {
   const now = new Date();
-  const [tokushima, jma, forecast] = await Promise.all([safeTokushima(), fetchJmaWarnings(), fetchTodayRainChance()]);
+  const [tokushima, jma] = await Promise.all([safeTokushima(), fetchJmaWarnings()]);
   const selected = selectHirono(tokushima.observations);
   const db = await persistAndReadHistory(tokushima.observations);
   const override = await readOverride();
@@ -24,7 +23,6 @@ export async function buildSafetySnapshot(): Promise<SafetyResponse> {
     rainfall48hMm: db.rainfall48hMm,
     upstreamRainfall24hMm: db.upstreamRainfall24hMm,
     upstreamRainfall48hMm: db.upstreamRainfall48hMm,
-    todayRainChancePercent: forecast.todayRainChancePercent,
     thunderWarning: jma.thunderWarning,
     heavyRainWarning: jma.heavyRainWarning,
     floodWarning: jma.floodWarning,

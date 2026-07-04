@@ -13,7 +13,6 @@ export type SafetyMetrics = {
   rainfall48hMm: number | null;
   upstreamRainfall24hMm: number | null;
   upstreamRainfall48hMm: number | null;
-  todayRainChancePercent: number | null;
   thunderWarning: boolean | null;
   heavyRainWarning: boolean | null;
   floodWarning: boolean | null;

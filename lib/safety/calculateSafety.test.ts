@@ -15,7 +15,6 @@ const base: SafetyInput = {
     rainfall48hMm: 0,
     upstreamRainfall24hMm: 0,
     upstreamRainfall48hMm: 0,
-    todayRainChancePercent: 0,
     thunderWarning: false,
     heavyRainWarning: false,
     floodWarning: false,
@@ -43,13 +42,5 @@ describe("calculateSafety", () => {
       sourceHealth: { ...base.sourceHealth, databaseHistory: "insufficient" }
     });
     expect(result.status).toBe("UNKNOWN");
-  });
-
-  it("returns NG when today's rain chance is high", () => {
-    const result = calculateSafety({
-      ...base,
-      metrics: { ...base.metrics, todayRainChancePercent: 50 }
-    });
-    expect(result.status).toBe("NG");
   });
 });

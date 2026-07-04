@@ -64,7 +64,6 @@ export default async function HomePage() {
             <Metric label="1時間雨量" value={format(snapshot.metrics.rainfall1hMm, "mm")} />
             <Metric label="24時間雨量" value={format(snapshot.metrics.rainfall24hMm, "mm")} />
             <Metric label="48時間雨量" value={format(snapshot.metrics.rainfall48hMm, "mm")} />
-            <Metric label="今日の降水確率" value={format(snapshot.metrics.todayRainChancePercent, "%")} />
             <Metric label="データ経過" value={format(snapshot.metrics.dataAgeMinutes, "分")} />
           </ul>
         </section>
