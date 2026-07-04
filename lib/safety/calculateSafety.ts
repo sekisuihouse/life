@@ -21,8 +21,8 @@ export function calculateSafety(input: SafetyInput): SafetyResponse {
     reasons.push(input.overrideMessage || "管理者が手動で利用停止にしています。");
   }
 
-  if (input.sourceHealth.tokushimaGeojson !== "ok") {
-    unknown.push("徳島県オープンデータの取得または鮮度確認に問題があります。");
+  if (input.sourceHealth.tokushimaGeojson === "error") {
+    unknown.push("徳島県水防情報の取得に問題があります。");
   }
 
   if (input.sourceHealth.databaseHistory !== "ok") {
