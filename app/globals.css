@@ -296,6 +296,18 @@ h2 {
   border: 2px solid var(--km-color-black);
 }
 
+.form-panel {
+  margin-top: var(--km-space-8);
+}
+
+.google-form {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  border: 0;
+  background: var(--km-color-white);
+}
+
 .footer {
   padding: var(--km-space-8);
   border-top: 1px solid var(--km-color-border-subtle);

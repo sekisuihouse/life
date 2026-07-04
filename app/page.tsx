@@ -1,34 +1,27 @@
-import { borrowAction, returnAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth/guards";
 import { buildSafetySnapshot } from "@/lib/safety/snapshot";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({
-  searchParams
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const [user, params] = await Promise.all([requireUser(), searchParams]);
+const BORROW_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSfjFMYhbDtq6u87dQI1pW8uB4JxvFP0-Tk_qbKsFGPW9d5fDg/viewform?embedded=true";
+const RETURN_FORM_URL =
+  "https://docs.google.com/forms/d/1izCPWa-GCklsOO7SCyIe8pt8CeJDXtfC8YualdeUwi8/viewform?embedded=true";
+
+export default async function HomePage() {
+  const user = await requireUser();
   if (user.isAdmin) return <TeacherDashboard />;
 
-  const [snapshot, activeRental] = await Promise.all([buildSafetySnapshot(), getActiveRental(user.id)]);
-  const canBorrow = snapshot.status === "OK" && !activeRental;
-  const error = typeof params.error === "string" ? params.error : null;
+  const snapshot = await buildSafetySnapshot();
+  const canBorrow = snapshot.status === "OK";
 
   return (
-    <main className="page page-narrow">
+    <main className="page">
       <section className="arc-heading">
         <p className="eyebrow">Ayukui River Common</p>
         <h1>今日の判定</h1>
       </section>
-
-      {params.borrowed === "1" && <p className="notice">貸出済みです。返却時に写真を投稿してください。</p>}
-      {params.returned === "1" && <p className="notice">返却完了です。</p>}
-      {error === "safety" && <p className="notice danger">現在の判定がOKではないため、貸出できません。</p>}
-      {error === "photo" && <p className="notice danger">返却写真を選択してください。</p>}
-      {error === "upload" && <p className="notice danger">写真アップロードに失敗しました。</p>}
 
       <section className="status-panel" aria-labelledby="status-title">
         <h2 id="status-title">今日の判定</h2>
@@ -39,38 +32,34 @@ export default async function HomePage({
             <li key={reason}>{reason}</li>
           ))}
         </ul>
-
-        {!activeRental && (
-          <form action={borrowAction}>
-            <button className="km-button" disabled={!canBorrow}>今から借ります</button>
-          </form>
-        )}
-
-        {activeRental && (
-          <div className="return-box">
-            <p className="notice">貸出済み</p>
-            <form className="form" action={returnAction}>
-              <input type="hidden" name="rental_id" value={activeRental.id} />
-              <label className="field">
-                返却写真
-                <input name="photo" type="file" accept="image/*" required />
-              </label>
-              <button className="km-button">返却、写真投稿</button>
-            </form>
-          </div>
-        )}
       </section>
 
-      <section className="panel" aria-label="観測値">
-        <h2>観測値</h2>
-        <ul className="metrics">
-          <Metric label="水位" value={format(snapshot.metrics.waterLevelM, "m")} />
-          <Metric label="観測所" value={snapshot.metrics.waterLevelStation || "不明"} />
-          <Metric label="1時間雨量" value={format(snapshot.metrics.rainfall1hMm, "mm")} />
-          <Metric label="24時間雨量" value={format(snapshot.metrics.rainfall24hMm, "mm")} />
-          <Metric label="48時間雨量" value={format(snapshot.metrics.rainfall48hMm, "mm")} />
-          <Metric label="データ経過" value={format(snapshot.metrics.dataAgeMinutes, "分")} />
-        </ul>
+      <div className="grid">
+        <section className="panel" aria-label="観測値">
+          <h2>観測値</h2>
+          <ul className="metrics">
+            <Metric label="水位" value={format(snapshot.metrics.waterLevelM, "m")} />
+            <Metric label="観測所" value={snapshot.metrics.waterLevelStation || "不明"} />
+            <Metric label="1時間雨量" value={format(snapshot.metrics.rainfall1hMm, "mm")} />
+            <Metric label="24時間雨量" value={format(snapshot.metrics.rainfall24hMm, "mm")} />
+            <Metric label="48時間雨量" value={format(snapshot.metrics.rainfall48hMm, "mm")} />
+            <Metric label="データ経過" value={format(snapshot.metrics.dataAgeMinutes, "分")} />
+          </ul>
+        </section>
+
+        <section className="panel" aria-label="返却申請フォーム">
+          <h2>返却申請フォーム</h2>
+          <GoogleForm title="返却申請フォーム" src={RETURN_FORM_URL} height={732} />
+        </section>
+      </div>
+
+      <section className="panel form-panel" aria-label="貸し出し申請フォーム">
+        <h2>貸し出し申請フォーム</h2>
+        {canBorrow ? (
+          <GoogleForm title="貸し出し申請フォーム" src={BORROW_FORM_URL} height={732} />
+        ) : (
+          <p className="notice danger">現在の判定がOKではないため、貸し出し申請フォームは表示しません。</p>
+        )}
       </section>
     </main>
   );
@@ -103,17 +92,6 @@ async function TeacherDashboard() {
   );
 }
 
-async function getActiveRental(userId: string) {
-  const supabase = createSupabaseAdminClient();
-  const { data } = await supabase
-    .from("rentals")
-    .select("id, borrowed_at, item_count, size")
-    .eq("user_id", userId)
-    .is("returned_at", null)
-    .maybeSingle();
-  return data;
-}
-
 function RentalList({ rentals, showPhoto = false }: { rentals: any[]; showPhoto?: boolean }) {
   if (rentals.length === 0) return <p className="panel">該当する記録はありません。</p>;
   return (
@@ -129,6 +107,23 @@ function RentalList({ rentals, showPhoto = false }: { rentals: any[]; showPhoto?
         </article>
       ))}
     </div>
+  );
+}
+
+function GoogleForm({ title, src, height }: { title: string; src: string; height: number }) {
+  return (
+    <iframe
+      className="google-form"
+      src={src}
+      title={title}
+      width="640"
+      height={height}
+      frameBorder="0"
+      marginHeight={0}
+      marginWidth={0}
+    >
+      読み込んでいます…
+    </iframe>
   );
 }
 
