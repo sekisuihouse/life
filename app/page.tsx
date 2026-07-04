@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const BORROW_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSfjFMYhbDtq6u87dQI1pW8uB4JxvFP0-Tk_qbKsFGPW9d5fDg/viewform?embedded=true";
 const RETURN_FORM_URL =
-  "https://docs.google.com/forms/d/1izCPWa-GCklsOO7SCyIe8pt8CeJDXtfC8YualdeUwi8/viewform?embedded=true";
+  "https://docs.google.com/forms/d/e/1FAIpQLSdd_g2F6DuK9GBptzLY7tI3f7spTkGZ8ya3XckkeLOXJ9Gwrw/viewform?usp=dialog";
 
 export default async function HomePage() {
   const user = await requireUser();
@@ -49,7 +49,9 @@ export default async function HomePage() {
 
         <section className="panel" aria-label="返却申請フォーム">
           <h2>返却申請フォーム</h2>
-          <GoogleForm title="返却申請フォーム" src={RETURN_FORM_URL} height={732} />
+          <a className="km-button" href={RETURN_FORM_URL} target="_blank" rel="noreferrer">
+            返却申請フォームを開く
+          </a>
         </section>
       </div>
 
